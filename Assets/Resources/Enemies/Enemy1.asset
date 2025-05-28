@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f1cc0a3442cac6d499cb4b4e85bb3ca3, type: 3}
+  m_Name: Enemy1
+  m_EditorClassIdentifier: 
+  enemyName: Dark Undead
+  enemySprite: {fileID: 613658156, guid: 1bc6097228993f045852159e71f81d5b, type: 3}
+  animatorController: {fileID: 9100000, guid: 3f5106764e76bec4a91dff6b29b7436e, type: 2}
+  type: 0
+  maxHealth: 200
+  damage: 4
+  moveSpeed: 1.1
+  attackRange: 1.2
+  attackSpeed: 1
+  moneyDropMin: 15
+  moneyDropMax: 35
+  moneyDropChance: 25
+  projectilePrefab: {fileID: 6119991934536161713, guid: 625a8412aa9ec314e8f943c392a3d247, type: 3}
+  projectileSpeed: 6
+  phase2HealthPercentage: 0.5
+  phase2DamageMultiplier: 1.5
+  phase2SpeedMultiplier: 1.2

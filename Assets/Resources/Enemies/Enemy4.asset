@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f1cc0a3442cac6d499cb4b4e85bb3ca3, type: 3}
+  m_Name: Enemy4
+  m_EditorClassIdentifier: 
+  enemyName: Bone Undead 2
+  enemySprite: {fileID: 1782705385, guid: d33598d781682e049a53a0a13104ef29, type: 3}
+  animatorController: {fileID: 22100000, guid: 68f15f6870fc1324ea2a01c1b1746a93, type: 2}
+  type: 2
+  maxHealth: 100
+  damage: 10
+  moveSpeed: 1.2
+  attackRange: 5
+  attackSpeed: 1
+  moneyDropMin: 5
+  moneyDropMax: 25
+  moneyDropChance: 25
+  projectilePrefab: {fileID: 6119991934536161713, guid: 525778ba9e9418441a1015e1b9e8241f, type: 3}
+  projectileSpeed: 7
+  phase2HealthPercentage: 0.5
+  phase2DamageMultiplier: 1.5
+  phase2SpeedMultiplier: 1.2

@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f1cc0a3442cac6d499cb4b4e85bb3ca3, type: 3}
+  m_Name: Boss1
+  m_EditorClassIdentifier: 
+  enemyName: Huh Cat
+  enemySprite: {fileID: 1050938153562514476, guid: 8fd9ae891ad42794fa003a5f9ba79bfb, type: 3}
+  animatorController: {fileID: 9100000, guid: 5b3b68f4ebc80e140880c93f18d6a115, type: 2}
+  type: 3
+  maxHealth: 3000
+  damage: 30
+  moveSpeed: 2.5
+  attackRange: 1.5
+  attackSpeed: 0.5
+  moneyDropMin: 50
+  moneyDropMax: 100
+  moneyDropChance: 50
+  projectilePrefab: {fileID: 6119991934536161713, guid: 525778ba9e9418441a1015e1b9e8241f, type: 3}
+  projectileSpeed: 6
+  phase2HealthPercentage: 0.5
+  phase2DamageMultiplier: 1.5
+  phase2SpeedMultiplier: 1.2
