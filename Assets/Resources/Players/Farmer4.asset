@@ -12,11 +12,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e9ba48b6869a8694b9746b9ab52ca39c, type: 3}
   m_Name: Farmer4
   m_EditorClassIdentifier: 
-  playerName: Huy 4
+  playerName: Sage Greenthumb
   playerSprite: {fileID: 938132271, guid: 57a1443e67528144aa07582927559650, type: 3}
   animatorController: {fileID: 22100000, guid: 1611d347f219f1d4ea06f2321eaf72f8, type: 2}
-  maxHealth: 100
-  moveSpeed: 10
-  damageMultiplier: 0.8
-  attackSpeedMultiplier: 1
-  description: "Ch\u1EA1y nhanh nh\u01B0ng dame h\u1EBBo:>"
+  maxHealth: 1350
+  moveSpeed: 0.95
+  damageMultiplier: 0.9
+  attackSpeedMultiplier: 0.9
+  description: No Information

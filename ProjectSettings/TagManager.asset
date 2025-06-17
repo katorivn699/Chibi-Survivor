@@ -1,0 +1,78 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!78 &1
+TagManager:
+  serializedVersion: 3
+  tags:
+  - Enemy
+  - Projectile
+  - EnemyProjectile
+  - Audio Manager
+  - Wall
+  - Melee
+  - Fast
+  - Ranged
+  - Boss
+  layers:
+  - Default
+  - TransparentFX
+  - Ignore Raycast
+  - Player
+  - Water
+  - UI
+  - Ground
+  - Enemy
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  m_SortingLayers:
+  - name: Default
+    uniqueID: 0
+    locked: 0
+  - name: Ground
+    uniqueID: 1821187981
+    locked: 0
+  - name: WalkInFront
+    uniqueID: 687257771
+    locked: 0
+  - name: Collision
+    uniqueID: 613843659
+    locked: 0
+  - name: Enemy
+    uniqueID: 4006055381
+    locked: 0
+  - name: Player
+    uniqueID: 267788967
+    locked: 0
+  - name: UI
+    uniqueID: 2268454269
+    locked: 0
+  - name: WalkBehind
+    uniqueID: 1088056257
+    locked: 0
+  - name: Decoration
+    uniqueID: 1164284725
+    locked: 0
+  m_RenderingLayers:
+  - Default

@@ -14,7 +14,7 @@ public class ShopItemData : ScriptableObject
     public Sprite itemSprite;
     public ItemType type;
     public int price;
-    public float rarity; // Tỉ lệ xuất hiện
+    public float rarity; 
     
     [Header("Weapon Item")]
     [Tooltip("Weapon can be upgrade include this type of data")]

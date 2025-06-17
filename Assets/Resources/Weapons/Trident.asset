@@ -17,8 +17,8 @@ MonoBehaviour:
   type: 0
   damage: 22.5
   attackSpeed: 15
-  radius: 2
-  rotationSpeed: 65
+  radius: 1.5
+  rotationSpeed: 12
   price: 250
   projectilePrefab: {fileID: 0}
   projectileSpeed: 0

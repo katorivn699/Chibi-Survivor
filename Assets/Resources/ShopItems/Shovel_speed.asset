@@ -17,7 +17,7 @@ MonoBehaviour:
   type: 1
   price: 250
   rarity: 2
-  weaponData: {fileID: 0}
+  weaponData: {fileID: 11400000, guid: 56fd7426834ab7c4c92de6d0d07b7772, type: 2}
   damageMultiplier: 1
-  attackSpeedMultiplier: 50
+  attackSpeedMultiplier: 1.5
   healthRestoreAmount: 0

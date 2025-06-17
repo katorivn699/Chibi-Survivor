@@ -125,6 +125,9 @@ public class EnemySpawner : MonoBehaviour
 
             activeEnemies.Add(bossObject);
 
+            HUD hud = Object.FindFirstObjectByType<HUD>();
+            hud.ShowBossHealth(bossController);
+
             DestroyCallback callback = bossObject.GetComponent<DestroyCallback>();
             if (callback == null) callback = bossObject.AddComponent<DestroyCallback>();
             callback.OnDestroyed = () => activeEnemies.Remove(bossObject);

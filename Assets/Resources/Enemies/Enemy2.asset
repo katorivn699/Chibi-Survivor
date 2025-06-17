@@ -19,13 +19,13 @@ MonoBehaviour:
   maxHealth: 250
   damage: 7
   moveSpeed: 1.5
-  attackRange: 1.1
+  attackRange: 1
   attackSpeed: 1
   moneyDropMin: 13
   moneyDropMax: 33
   moneyDropChance: 20
-  projectilePrefab: {fileID: 6119991934536161713, guid: 625a8412aa9ec314e8f943c392a3d247, type: 3}
-  projectileSpeed: 6
+  projectilePrefab: {fileID: 0}
+  projectileSpeed: 0
   phase2HealthPercentage: 0.5
   phase2DamageMultiplier: 1.5
   phase2SpeedMultiplier: 1.2

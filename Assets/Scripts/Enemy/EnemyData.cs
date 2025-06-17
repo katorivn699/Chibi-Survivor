@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 public enum EnemyType
@@ -33,4 +34,6 @@ public class EnemyData : ScriptableObject
     public float phase2HealthPercentage = 0.5f; 
     public float phase2DamageMultiplier = 1.5f;
     public float phase2SpeedMultiplier = 1.2f;
+
+    public List<BossSkillOption> bossSkills = new List<BossSkillOption>();
 }

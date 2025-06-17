@@ -15,11 +15,13 @@ MonoBehaviour:
   weaponName: Fire Lance
   weaponSprite: {fileID: -353751291, guid: 0d5e657ee5a074e4baa53d5b248a01d2, type: 3}
   type: 1
-  damage: 10
+  damage: 25
   attackSpeed: 7
   radius: 15
   rotationSpeed: 0
   price: 400
   projectilePrefab: {fileID: 6119991934536161713, guid: 625a8412aa9ec314e8f943c392a3d247, type: 3}
-  projectileSpeed: 8
+  projectileSpeed: 4
   projectileLifetime: 10
+  projectileCount: 1
+  spreadAngle: 0

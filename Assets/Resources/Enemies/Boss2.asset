@@ -1,0 +1,48 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f1cc0a3442cac6d499cb4b4e85bb3ca3, type: 3}
+  m_Name: Boss2
+  m_EditorClassIdentifier: 
+  enemyName: UIA Cat
+  enemySprite: {fileID: -2857313674184160158, guid: cddf7d659ba98654d974140b6eb2ceec, type: 3}
+  animatorController: {fileID: 22100000, guid: d90e7bd1630f34543a077e91b626bb95, type: 2}
+  type: 3
+  maxHealth: 10000
+  damage: 30
+  moveSpeed: 2
+  attackRange: 0.7
+  attackSpeed: 2
+  moneyDropMin: 50
+  moneyDropMax: 1000
+  moneyDropChance: 25
+  projectilePrefab: {fileID: 6119991934536161713, guid: 525778ba9e9418441a1015e1b9e8241f, type: 3}
+  projectileSpeed: 5
+  rangedRange: 10
+  phase2HealthPercentage: 0.5
+  phase2DamageMultiplier: 1.5
+  phase2SpeedMultiplier: 1.2
+  bossSkills:
+  - skillName: 1
+    weightPhase1: 0.2
+    weightPhase2: 0.1
+  - skillName: 2
+    weightPhase1: 0.02
+    weightPhase2: 0.2
+  - skillName: 3
+    weightPhase1: 0.1
+    weightPhase2: 0.12
+  - skillName: 4
+    weightPhase1: 0.1
+    weightPhase2: 0.2
+  - skillName: 0
+    weightPhase1: 0.5
+    weightPhase2: 0.2

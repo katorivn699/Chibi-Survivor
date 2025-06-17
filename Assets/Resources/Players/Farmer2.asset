@@ -12,11 +12,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e9ba48b6869a8694b9746b9ab52ca39c, type: 3}
   m_Name: Farmer2
   m_EditorClassIdentifier: 
-  playerName: Huy 2
+  playerName: Luna Rosevale
   playerSprite: {fileID: -150523396, guid: 0c187a32c5bde4747be8d00770b07403, type: 3}
   animatorController: {fileID: 22100000, guid: 4892ba07f423f1447a5fef6f97a6eb9a, type: 2}
-  maxHealth: 100
-  moveSpeed: 7.5
-  damageMultiplier: 1.2
-  attackSpeedMultiplier: 1.3
-  description: "M\u1EA1nh kh\xF4ng k\xE9m"
+  maxHealth: 950
+  moveSpeed: 1.2
+  damageMultiplier: 0.95
+  attackSpeedMultiplier: 1.2
+  description: 'No Information
+
+'

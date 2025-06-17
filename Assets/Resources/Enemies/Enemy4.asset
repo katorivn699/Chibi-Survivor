@@ -25,7 +25,7 @@ MonoBehaviour:
   moneyDropMax: 25
   moneyDropChance: 25
   projectilePrefab: {fileID: 6119991934536161713, guid: 525778ba9e9418441a1015e1b9e8241f, type: 3}
-  projectileSpeed: 7
+  projectileSpeed: 3
   phase2HealthPercentage: 0.5
   phase2DamageMultiplier: 1.5
   phase2SpeedMultiplier: 1.2

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 
 public class ShopManager : MonoBehaviour
@@ -10,11 +11,24 @@ public class ShopManager : MonoBehaviour
     [Header("References")]
     public ShopUI shopUI;
 
+    [Header("Shop Refresh Settings")]
+    public int initialRefreshCost = 0;
+    //public int refreshCostIncrease = 25;
+
+    private int currentRefreshCost;
+
     // Renamed for clarity, as it's used internally by ShopManager
     private List<ShopItemData> currentShopOfferings = new List<ShopItemData>();
 
+    public int GetCurrentRefreshCost()
+    {
+        return currentRefreshCost;
+    }
+
     private void Start()
     {
+        currentRefreshCost = initialRefreshCost;
+
         // Ensure EventManager exists before subscribing
         if (EventManager.Instance != null)
         {
@@ -24,6 +38,7 @@ public class ShopManager : MonoBehaviour
         {
             Debug.LogError("EventManager instance not found in ShopManager Start!");
         }
+
     }
 
     private void OnDestroy()
@@ -37,6 +52,7 @@ public class ShopManager : MonoBehaviour
 
     private void OnShopOpened()
     {
+        currentRefreshCost = initialRefreshCost;
         // Generate a new set of items for the shop
         GenerateShopItems();
 
@@ -162,6 +178,49 @@ public class ShopManager : MonoBehaviour
             // Optionally notify the player via UI
         }
     }
+
+
+    public void RefreshShop()
+    {
+        GameObject playerObject = GameObject.FindGameObjectWithTag("Player");
+        if (playerObject == null)
+        {
+            Debug.LogError("Player object not found in RefreshShop!");
+            return;
+        }
+
+        PlayerStats playerStats = playerObject.GetComponent<PlayerStats>();
+        if (playerStats == null)
+        {
+            Debug.LogError("PlayerStats component not found in RefreshShop!");
+            return;
+        }
+
+        if (playerStats.SpendMoney(currentRefreshCost))
+        {
+            // Làm mới danh sách vật phẩm
+            GenerateShopItems();
+
+            // Cập nhật UI
+            if (shopUI != null)
+            {
+                shopUI.UpdateShop(currentShopOfferings);
+            }
+
+            // Tăng chi phí cho lần làm mới sau
+            int randomIncrease = Random.Range(10, 41);
+            currentRefreshCost += randomIncrease;
+            //currentRefreshCost += refreshCostIncrease;
+
+            Debug.Log($"Shop refreshed. Next refresh will cost {currentRefreshCost}");
+        }
+        else
+        {
+            Debug.Log("Not enough money to refresh shop.");
+            // (Tùy chọn) Thông báo qua UI
+        }
+    }
+
 
     // Handles the logic for applying the purchased item's effect
     private bool ProcessPurchase(ShopItemData item, GameObject playerObject)

@@ -158,6 +158,7 @@ GameObject:
   - component: {fileID: 1687055948699474516}
   - component: {fileID: 5989819619158763108}
   - component: {fileID: 2879080627316564623}
+  - component: {fileID: 4195714268765332794}
   m_Layer: 5
   m_Name: CharacterButton
   m_TagString: Untagged
@@ -217,9 +218,9 @@ MonoBehaviour:
   m_Transition: 1
   m_Colors:
     m_NormalColor: {r: 1, g: 1, b: 1, a: 1}
-    m_HighlightedColor: {r: 0.48593804, g: 0.9811321, b: 0.97172314, a: 1}
-    m_PressedColor: {r: 0.3584906, g: 0.3584906, b: 0.3584906, a: 1}
-    m_SelectedColor: {r: 0.9607843, g: 0.9607843, b: 0.9607843, a: 1}
+    m_HighlightedColor: {r: 0.9607843, g: 0.9607843, b: 0.9607843, a: 1}
+    m_PressedColor: {r: 0.78431374, g: 0.78431374, b: 0.78431374, a: 1}
+    m_SelectedColor: {r: 1, g: 0.4575472, b: 0.4575472, a: 1}
     m_DisabledColor: {r: 0.78431374, g: 0.78431374, b: 0.78431374, a: 0.5019608}
     m_ColorMultiplier: 1
     m_FadeDuration: 0.1
@@ -235,10 +236,26 @@ MonoBehaviour:
     m_SelectedTrigger: Selected
     m_DisabledTrigger: Disabled
   m_Interactable: 1
-  m_TargetGraphic: {fileID: 0}
+  m_TargetGraphic: {fileID: 477050882809709770}
   m_OnClick:
     m_PersistentCalls:
       m_Calls: []
+--- !u!114 &4195714268765332794
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7582384249905951012}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 255321b869e097442a401296638615cd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  scaleFactor: 1.2
+  pressDuration: 0.1
+  releaseDuration: 0.15
+  easeType: 19
 --- !u!1 &9188029036526040282
 GameObject:
   m_ObjectHideFlags: 0

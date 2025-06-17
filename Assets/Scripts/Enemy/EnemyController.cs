@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections;
+using UnityEngine.AI;
 
 public class EnemyController : MonoBehaviour, IDamageable
 {
@@ -15,18 +16,27 @@ public class EnemyController : MonoBehaviour, IDamageable
     public Rigidbody2D rb;
     public Animator animator;
     public SpriteRenderer spriteRenderer;
+    private NavMeshAgent navAgent;
 
     private Transform playerTransform;
     private bool isInAttackRange = false;
+    private int lastSkillIndex = -1;
+    private float dodgeCooldown = 0f;
+    private Vector3 lastPosition; // To detect if stuck
+    private float stuckCheckTimer = 0f;
+    private const float STUCK_CHECK_INTERVAL = 1f; // Check every 1 second
+    private const float STUCK_DISTANCE_THRESHOLD = 0.1f; // Distance to consider as stuck
 
     private void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
         animator = GetComponent<Animator>();
         spriteRenderer = GetComponent<SpriteRenderer>();
-    }
+        navAgent = GetComponent<NavMeshAgent>();
 
-    // Removed Start() method, initialization logic moved to Initialize()
+        navAgent.updateRotation = false;
+        navAgent.updateUpAxis = false;
+    }
 
     public void Initialize(EnemyData data)
     {
@@ -42,6 +52,10 @@ public class EnemyController : MonoBehaviour, IDamageable
 
         currentHealth = enemyData.maxHealth;
 
+        navAgent.speed = enemyData.moveSpeed;
+        navAgent.acceleration = enemyData.moveSpeed * 4f;
+        navAgent.angularSpeed = 720f;
+
         // Assign Sprite
         if (spriteRenderer != null && enemyData.enemySprite != null)
         {
@@ -49,7 +63,7 @@ public class EnemyController : MonoBehaviour, IDamageable
         }
         else if (spriteRenderer != null)
         {
-            Debug.LogWarning($"SpriteRenderer found on {gameObject.name}, but EnemyData \'{enemyData.name}\' has no sprite assigned!");
+            Debug.LogWarning($"SpriteRenderer found on {gameObject.name}, but EnemyData '{enemyData.name}' has no sprite assigned!");
         }
         else
         {
@@ -63,101 +77,191 @@ public class EnemyController : MonoBehaviour, IDamageable
         }
         else if (animator != null)
         {
-            Debug.LogWarning($"Animator found on {gameObject.name}, but EnemyData \'{enemyData.name}\' has no Animator Controller assigned!");
+            Debug.LogWarning($"Animator found on {gameObject.name}, but EnemyData '{enemyData.name}' has no Animator Controller assigned!");
         }
         else
         {
             Debug.LogError($"Animator component missing on {gameObject.name}!");
         }
 
-        // Find Player Transform
         playerTransform = GameObject.FindGameObjectWithTag("Player")?.transform;
         if (playerTransform == null)
         {
             Debug.LogError($"Enemy {gameObject.name} could not find Player object! Make sure Player has 'Player' tag.");
-            isDead = true; // Prevent AI execution
-                           // Optionally disable the enemy: gameObject.SetActive(false);
-            return; // Stop initialization if player not found
+            isDead = true;
+            gameObject.SetActive(false);
+            return;
         }
 
-        // Reset state for pooling / reactivation
         isDead = false;
-        attackCooldown = 0f; // Reset attack cooldown
+        attackCooldown = 0f;
         if (spriteRenderer != null) spriteRenderer.color = Color.white;
         Collider2D collider = GetComponent<Collider2D>();
         if (collider != null) collider.enabled = true;
-        rb.linearVelocity = Vector2.zero; // Reset velocity
+        rb.linearVelocity = Vector2.zero;
+
+        lastPosition = transform.position;
+        stuckCheckTimer = 0f;
+
+        EnsureOnNavMesh();
     }
 
     private void OnEnable()
     {
-        // If using object pooling, re-initialization might be needed here
-        // or ensure Initialize is called when spawning from pool.
-        // For now, we assume Initialize is called by the spawner.
+        EnsureOnNavMesh();
     }
+
     private void Update()
     {
         if (isDead) return;
 
-        // Giảm cooldown
-        if (attackCooldown > 0)
+        if (attackCooldown > 0) attackCooldown -= Time.deltaTime;
+        if (dodgeCooldown > 0) dodgeCooldown -= Time.deltaTime;
+
+        stuckCheckTimer += Time.deltaTime;
+        if (stuckCheckTimer >= STUCK_CHECK_INTERVAL)
         {
-            attackCooldown -= Time.deltaTime;
+            CheckIfStuck();
+            stuckCheckTimer = 0f;
         }
 
-        // Kiểm tra khoảng cách đến người chơi
         float distanceToPlayer = Vector2.Distance(transform.position, playerTransform.position);
         isInAttackRange = distanceToPlayer <= enemyData.attackRange;
 
-        // Xử lý hành vi theo loại kẻ địch
-        switch (enemyData.type)
+        if (!isDead && dodgeCooldown <= 0 && Random.value < 0.005f && distanceToPlayer < 3f)
         {
-            case EnemyType.Melee:
-                HandleMeleeEnemy();
-                break;
-            case EnemyType.Fast:
-                HandleFastEnemy();
-                break;
-            case EnemyType.Ranged:
-                HandleRangedEnemy();
-                break;
-            case EnemyType.Boss:
-                HandleBossEnemy();
-                break;
+            StartCoroutine(DodgeRoutine());
+            dodgeCooldown = 2f;
         }
 
-        // Flip sprite theo hướng di chuyển
-        if (rb.linearVelocity.x > 0)
+        if (!isInAttackRange)
         {
-            spriteRenderer.flipX = false;
+            MoveTowardsPlayer();
         }
-        else if (rb.linearVelocity.x < 0)
+
+        switch (enemyData.type)
         {
-            spriteRenderer.flipX = true;
+            case EnemyType.Melee: HandleMeleeEnemy(); break;
+            case EnemyType.Fast: HandleFastEnemy(); break;
+            case EnemyType.Ranged: HandleRangedEnemy(); break;
+            case EnemyType.Boss: HandleBossEnemy(); break;
         }
+
+        // Apply NavMesh movement
+        if (navAgent.enabled && navAgent.isOnNavMesh)
+        {
+            navAgent.Move(navAgent.desiredVelocity * Time.deltaTime);
+            Vector2 vel = navAgent.desiredVelocity;
+            if (vel.x > 0.1f) spriteRenderer.flipX = false;
+            else if (vel.x < -0.1f) spriteRenderer.flipX = true;
+        }
+
+        if (playerTransform == null)
+        {
+            if (enemyData.type != EnemyType.Boss && !isDead)
+            {
+                StartCoroutine(IdleLookAround());
+            }
+            return;
+        }
+    }
+
+    private void EnsureOnNavMesh()
+    {
+        if (!navAgent.enabled)
+        {
+            navAgent.enabled = true;
+        }
+
+        NavMeshHit hit;
+        if (!navAgent.isOnNavMesh)
+        {
+            int maxAttempts = 3;
+            float searchRadius = 10f;
+            for (int i = 0; i < maxAttempts; i++)
+            {
+                if (NavMesh.SamplePosition(transform.position, out hit, searchRadius, NavMesh.AllAreas))
+                {
+                    transform.position = hit.position;
+                    navAgent.Warp(hit.position);
+                    Debug.Log($"Enemy {gameObject.name} successfully placed on NavMesh at {hit.position}");
+                    return;
+                }
+                searchRadius *= 2; 
+            }
+            Debug.LogError($"Enemy {gameObject.name} could not find a valid NavMesh position after {maxAttempts} attempts!");
+            isDead = true;
+            gameObject.SetActive(false);
+        }
+    }
+
+    private void CheckIfStuck()
+    {
+        if (Vector3.Distance(transform.position, lastPosition) < STUCK_DISTANCE_THRESHOLD)
+        {
+            Debug.Log($"Enemy {gameObject.name} appears stuck, recalculating path...");
+            EnsureOnNavMesh();
+            MoveTowardsPlayer(); // Force recalculate path
+        }
+        lastPosition = transform.position;
+    }
+
+    private IEnumerator DodgeRoutine()
+    {
+        if (navAgent.enabled && navAgent.isOnNavMesh)
+        {
+            navAgent.isStopped = true;  
+        }
+        navAgent.enabled = false;
+
+        Vector2 dodgeDir = Random.value > 0.5f ? Vector2.left : Vector2.right;
+        RaycastHit2D hit = Physics2D.Raycast(transform.position, dodgeDir, 1f, LayerMask.GetMask("Obstacle"));
+        if (hit.collider != null) dodgeDir *= -1;
+
+        float dodgeSpeed = enemyData.moveSpeed * 2f;
+        rb.linearVelocity = dodgeDir * dodgeSpeed;
+        yield return new WaitForSeconds(0.25f);
+        rb.linearVelocity = Vector2.zero;
+
+        navAgent.enabled = true;
+        EnsureOnNavMesh(); 
+        if (navAgent.enabled && navAgent.isOnNavMesh)
+        {
+            MoveTowardsPlayer(); 
+        }
+    }
+
+    private IEnumerator IdleLookAround()
+    {
+        rb.linearVelocity = Vector2.zero;
+        yield return new WaitForSeconds(Random.Range(0.5f, 1.5f));
+
+        Vector2 randomDir = Random.insideUnitCircle.normalized;
+        NavMeshHit hit;
+        Vector3 targetPos = transform.position + (Vector3)(randomDir * enemyData.moveSpeed * 0.5f);
+        if (NavMesh.SamplePosition(targetPos, out hit, 2f, NavMesh.AllAreas))
+        {
+            navAgent.SetDestination(hit.position);
+        }
+        yield return new WaitForSeconds(0.5f);
+        rb.linearVelocity = Vector2.zero;
     }
 
     private void HandleMeleeEnemy()
     {
         if (isInAttackRange)
         {
-            // Dừng lại và tấn công
-            //rb.linearVelocity = Vector2.zero;
             Attack();
         }
         else
         {
-            // Di chuyển đến người chơi
             MoveTowardsPlayer();
         }
     }
 
     private void HandleFastEnemy()
     {
-        // Di chuyển nhanh đến người chơi
         MoveTowardsPlayer();
-
-        // Tấn công khi trong tầm
         if (isInAttackRange)
         {
             Attack();
@@ -168,13 +272,10 @@ public class EnemyController : MonoBehaviour, IDamageable
     {
         if (isInAttackRange)
         {
-            // Dừng lại và tấn công từ xa
-            //rb.linearVelocity = Vector2.zero;
             RangedAttack();
         }
         else
         {
-            // Di chuyển đến khoảng cách tấn công
             MoveTowardsPlayer();
         }
     }
@@ -189,61 +290,70 @@ public class EnemyController : MonoBehaviour, IDamageable
 
         MoveTowardsPlayer(isPhase2);
 
-        if (attackCooldown <= 0 && (inAttackRange || inRangedRange))
+        if (attackCooldown > 0 || (!inAttackRange && !inRangedRange)) return;
+
+        foreach (var skill in enemyData.bossSkills)
         {
-            // Chọn kỹ năng dựa trên khoảng cách
-            System.Action[] skills;
-            float[] weights;
-
-            if (inAttackRange)
+            switch (skill.skillName.ToString())
             {
-                skills = new System.Action[] { Attack };
-                weights = new float[] { 1f }; // chỉ cận chiến
-            }
-            else if (inRangedRange)
-            {
-                skills = new System.Action[] {
-                RangedAttack,
-                () => SpawnProjectileSpread(12, 180f),
-                SpawnProjectileCircle,
-                SpecialChargeAttack,
-                () => SpawnProjectileSpiral(20, 100f, 0.1f)
-            };
-
-                weights = isPhase2
-                    ? new float[] { 0.2f, 0.2f, 0.2f, 0.2f, 0.2f }
-                    : new float[] { 0.25f, 0.25f, 0.25f, 0.25f, 0f }; // Chỉ dùng skill xoắn ốc ở giai đoạn 2
-            }
-            else return;
-
-            // Weighted random
-            float totalWeight = 0f;
-            foreach (var w in weights) totalWeight += w;
-
-            float randomValue = Random.Range(0f, totalWeight);
-            float sum = 0f;
-            int selectedIndex = 0;
-            for (int i = 0; i < weights.Length; i++)
-            {
-                sum += weights[i];
-                if (randomValue <= sum)
-                {
-                    selectedIndex = i;
+                case "RangedAttack":
+                    skill.skillAction = RangedAttack;
                     break;
-                }
+                case "SpreadProjectile":
+                    skill.skillAction = () => SpawnProjectileSpread(12, 180f);
+                    break;
+                case "ProjectileCircle":
+                    skill.skillAction = SpawnProjectileCircle;
+                    break;
+                case "ChargeAttack":
+                    skill.skillAction = SpecialChargeAttack;
+                    break;
+                case "Spiral":
+                    skill.skillAction = () => SpawnProjectileSpiral(20, 100f, 0.1f);
+                    break;
+                case "MeleeAttack":
+                    skill.skillAction = Attack;
+                    break;
+                default:
+                    Debug.LogWarning($"[BossSkill] Unknown skill name: {skill.skillName}");
+                    break;
             }
-
-            skills[selectedIndex]?.Invoke();
-
-            if (animator != null)
-            {
-                animator.SetTrigger("Attack");
-            }
-
-            attackCooldown = 1f / enemyData.attackSpeed;
         }
-    }
 
+        var skills = enemyData.bossSkills.FindAll(s => s.skillAction != null);
+        if (skills.Count == 0) return;
+
+        float[] weights = skills.ConvertAll(s => isPhase2 ? s.weightPhase2 : s.weightPhase1).ToArray();
+        float totalWeight = 0f;
+        foreach (var w in weights) totalWeight += w;
+
+        float rnd = Random.Range(0f, totalWeight);
+        float accum = 0f;
+        int selectedIndex = 0;
+
+        for (int i = 0; i < weights.Length; i++)
+        {
+            accum += weights[i];
+            if (rnd <= accum && i != lastSkillIndex)
+            {
+                selectedIndex = i;
+                break;
+            }
+        }
+
+        lastSkillIndex = selectedIndex;
+
+        Debug.Log($"[BossSkill] Using skill: {skills[selectedIndex].skillName}");
+
+        skills[selectedIndex].skillAction?.Invoke();
+
+        if (animator != null)
+        {
+            animator.SetTrigger("Attack");
+        }
+
+        attackCooldown = 1f / enemyData.attackSpeed;
+    }
 
     private void SpawnProjectileSpread(int projectileCount, float spreadAngle)
     {
@@ -251,8 +361,7 @@ public class EnemyController : MonoBehaviour, IDamageable
 
         attackCooldown = 1f / enemyData.attackSpeed;
 
-        float baseAngle = 0f; // Bạn có thể lấy hướng về player hoặc góc bất kỳ
-
+        float baseAngle = 0f;
         Vector2 centerDir = (playerTransform.position - transform.position).normalized;
         baseAngle = Mathf.Atan2(centerDir.y, centerDir.x) * Mathf.Rad2Deg;
 
@@ -301,7 +410,6 @@ public class EnemyController : MonoBehaviour, IDamageable
             float currentAngle = angleStep * i;
             Quaternion rotation = Quaternion.Euler(0, 0, currentAngle);
 
-            // Tính toán vị trí bắt đầu của đạn theo bán kính xoắn ốc
             Vector3 offset = rotation * Vector3.right * currentRadius;
             Vector3 spawnPosition = transform.position + offset;
 
@@ -319,7 +427,6 @@ public class EnemyController : MonoBehaviour, IDamageable
 
                 projectile.Initialize(damage, enemyData.projectileSpeed, 5f, false);
 
-                // Thêm chuyển động xoay cho đạn (nếu cần)
                 Rigidbody2D rbProj = projectileObj.GetComponent<Rigidbody2D>();
                 if (rbProj != null)
                 {
@@ -328,10 +435,7 @@ public class EnemyController : MonoBehaviour, IDamageable
                 }
             }
 
-            // Tăng bán kính xoắn ốc cho viên đạn tiếp theo
             currentRadius += radiusIncrement;
-
-            // Đợi một khoảng thời gian nhỏ để tạo hiệu ứng xoắn ốc dần dần
             yield return new WaitForSeconds(0.05f);
         }
     }
@@ -361,8 +465,6 @@ public class EnemyController : MonoBehaviour, IDamageable
 
     private void SpecialChargeAttack()
     {
-        // Boss lao nhanh về phía player trong 0.5s, gây sát thương khi chạm
-
         StartCoroutine(ChargeCoroutine());
     }
 
@@ -382,48 +484,63 @@ public class EnemyController : MonoBehaviour, IDamageable
         rb.linearVelocity = Vector2.zero;
     }
 
-    private Vector2 PredictPlayerPosition(float predictionTime)
-    {
-        Vector2 playerVelocity = (playerTransform.position - transform.position).normalized;
-        return (Vector2)playerTransform.position + playerVelocity * predictionTime;
-    }
-
-
     private void MoveTowardsPlayer(bool isPhase2 = false)
     {
-        Vector2 direction = (playerTransform.position - transform.position).normalized;
-        float speed = enemyData.moveSpeed;
-
-        PredictPlayerPosition(0.5f);
-
-        // Tăng tốc độ trong giai đoạn 2 của boss
-        if (isPhase2)
+        if (!navAgent.enabled || !navAgent.isOnNavMesh)
         {
-            speed *= enemyData.phase2SpeedMultiplier;
+            EnsureOnNavMesh();
+            if (!navAgent.enabled || !navAgent.isOnNavMesh) return;
         }
 
-        rb.linearVelocity = direction * speed;
+        float predictionTime = 0.4f;
+        if (enemyData.type == EnemyType.Fast) predictionTime = 0.6f;
+        else if (enemyData.type == EnemyType.Ranged) predictionTime = 0.3f;
+
+        Vector3 predictedPos = (Vector2)playerTransform.position +
+                              ((Vector2)playerTransform.position - (Vector2)transform.position).normalized * predictionTime;
+
+        NavMeshHit hit;
+        if (NavMesh.SamplePosition(predictedPos, out hit, 10f, NavMesh.AllAreas))
+        {
+            navAgent.speed = enemyData.moveSpeed * (isPhase2 ? enemyData.phase2SpeedMultiplier : 1f);
+            navAgent.SetDestination(hit.position);
+        }
+        else
+        {
+            if (NavMesh.SamplePosition(playerTransform.position, out hit, 20f, NavMesh.AllAreas))
+            {
+                navAgent.speed = enemyData.moveSpeed * (isPhase2 ? enemyData.phase2SpeedMultiplier : 1f);
+                navAgent.SetDestination(hit.position);
+            }
+            else
+            {
+                if (NavMesh.FindClosestEdge(transform.position, out hit, NavMesh.AllAreas))
+                {
+                    navAgent.SetDestination(hit.position);
+                    Debug.LogWarning($"Enemy {gameObject.name} could not path to player, moving to closest NavMesh edge.");
+                }
+                else
+                {
+                    Debug.LogError($"Enemy {gameObject.name} cannot find any valid NavMesh position to move!");
+                }
+            }
+        }
     }
 
     private void Attack()
     {
         if (attackCooldown <= 0)
         {
-            // Reset cooldown
             attackCooldown = 1f / enemyData.attackSpeed;
 
-            // Gây sát thương cho người chơi
             PlayerStats playerStats = playerTransform.GetComponent<PlayerStats>();
             if (playerStats != null)
             {
                 float damage = enemyData.damage;
-
-                // Tăng sát thương trong giai đoạn 2 của boss
                 if (enemyData.type == EnemyType.Boss && currentHealth <= enemyData.maxHealth * enemyData.phase2HealthPercentage)
                 {
                     damage *= enemyData.phase2DamageMultiplier;
                 }
-
                 playerStats.TakeDamage(damage);
             }
         }
@@ -433,29 +550,22 @@ public class EnemyController : MonoBehaviour, IDamageable
     {
         if (attackCooldown <= 0)
         {
-            // Reset cooldown
             attackCooldown = 1f / enemyData.attackSpeed;
 
-            // Tính toán hướng bắn
             Vector2 direction = (playerTransform.position - transform.position).normalized;
             float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
             Quaternion rotation = Quaternion.Euler(0, 0, angle);
 
-            // Bắn đạn
             GameObject projectileObj = ObjectPooler.Instance.SpawnFromPool("EnemyProjectile", transform.position, rotation);
 
             if (projectileObj != null)
             {
                 Projectile projectile = projectileObj.GetComponent<Projectile>();
-
                 float damage = enemyData.damage;
-
-                // Tăng sát thương trong giai đoạn 2 của boss
                 if (enemyData.type == EnemyType.Boss && currentHealth <= enemyData.maxHealth * enemyData.phase2HealthPercentage)
                 {
                     damage *= enemyData.phase2DamageMultiplier;
                 }
-
                 projectile.Initialize(damage, enemyData.projectileSpeed, 5f, false);
             }
         }
@@ -467,11 +577,10 @@ public class EnemyController : MonoBehaviour, IDamageable
         {
             spriteRenderer.color = Color.red;
             yield return new WaitForSeconds(duration);
-            if (!isDead) // Nếu chưa chết thì trả lại màu trắng
+            if (!isDead)
                 spriteRenderer.color = Color.white;
         }
     }
-
 
     public void TakeDamage(float damage, Vector2 knockbackDirection = default, float knockbackForce = 0f)
     {
@@ -480,30 +589,21 @@ public class EnemyController : MonoBehaviour, IDamageable
         currentHealth -= damage;
         StartCoroutine(FlashRedCoroutine());
 
-        // Áp dụng knockback nếu có
         if (knockbackForce > 0f && knockbackDirection != Vector2.zero)
         {
-            // Chỉ áp dụng knockback cho quái thường, không áp dụng cho boss
             if (enemyData.type != EnemyType.Boss)
             {
                 AudioController.Instance.PlaySFX("EnemyHit");
-                // Áp dụng lực đẩy tức thời
-                rb.linearVelocity = Vector2.zero; // Reset velocity hiện tại
+                rb.linearVelocity = Vector2.zero;
                 rb.AddForce(knockbackDirection * knockbackForce, ForceMode2D.Impulse);
-
-                // Có thể thêm hiệu ứng visual hoặc âm thanh khi bị đẩy lùi
-                // Ví dụ: tạo particle effect, thay đổi màu sprite tạm thời, v.v.
-
-                // Tùy chọn: Tạm thời vô hiệu hóa AI trong một khoảng thời gian ngắn
-                StartCoroutine(KnockbackStunCoroutine(0.2f)); // Choáng 0.2 giây
+                StartCoroutine(KnockbackStunCoroutine(0.2f));
                 Dodge();
             }
         }
 
-        // Kiểm tra nếu chết
         if (currentHealth <= 0)
         {
-            spriteRenderer.color = Color.white; // Đảm bảo màu trở về bình thường trước khi chết
+            spriteRenderer.color = Color.white;
             Die();
         }
 
@@ -511,8 +611,6 @@ public class EnemyController : MonoBehaviour, IDamageable
         {
             AudioController.Instance.PlayBGM("BGM1");
         }
-
-
     }
 
     private void Dodge()
@@ -531,22 +629,14 @@ public class EnemyController : MonoBehaviour, IDamageable
         rb.linearVelocity = Vector2.zero;
     }
 
-
     private IEnumerator KnockbackStunCoroutine(float stunDuration)
     {
-        // Lưu trạng thái di chuyển hiện tại
         bool wasMoving = rb.linearVelocity.magnitude > 0;
-
-        // Tạm dừng di chuyển và tấn công
         attackCooldown = Mathf.Max(attackCooldown, stunDuration);
-
-        // Đợi hết thời gian choáng
         yield return new WaitForSeconds(stunDuration);
-
-        // Khôi phục di chuyển nếu trước đó đang di chuyển
         if (wasMoving && !isDead)
         {
-            // AI sẽ tự động tiếp tục di chuyển trong Update
+            // AI will resume in Update
         }
     }
 
@@ -555,16 +645,24 @@ public class EnemyController : MonoBehaviour, IDamageable
         isDead = true;
         rb.linearVelocity = Vector2.zero;
 
-        // Chạy animation chết
-        animator.SetTrigger("Die");
+        if (navAgent != null && navAgent.enabled && navAgent.isOnNavMesh)
+        {
+            navAgent.isStopped = true;
+            navAgent.ResetPath();
+        }
 
-        // Vô hiệu hóa collider
+        navAgent.enabled = false;
+
+        animator.SetTrigger("Die");
         GetComponent<Collider2D>().enabled = false;
 
-        // Rơi tiền
-        DropMoney();
+        if (enemyData.type == EnemyType.Boss)
+        {
+            HUD hud = FindFirstObjectByType<HUD>();
+            hud.HideBossHealth();
+        }
 
-        // Hủy GameObject sau khi animation chết kết thúc
+        DropMoney();
         Destroy(gameObject, 1f);
     }
 
@@ -573,8 +671,6 @@ public class EnemyController : MonoBehaviour, IDamageable
         if (Random.value <= enemyData.moneyDropChance)
         {
             int moneyAmount = Random.Range(enemyData.moneyDropMin, enemyData.moneyDropMax + 1);
-
-            // Tìm người chơi và thêm tiền
             PlayerStats playerStats = playerTransform.GetComponent<PlayerStats>();
             if (playerStats != null)
             {
@@ -585,15 +681,12 @@ public class EnemyController : MonoBehaviour, IDamageable
 
     private void OnDrawGizmos()
     {
-        // Tầm phát hiện
         Gizmos.color = Color.yellow;
         Gizmos.DrawWireSphere(transform.position, enemyData.rangedRange);
 
         Gizmos.color = Color.red;
         Gizmos.DrawWireSphere(transform.position, enemyData.attackRange);
 
-
-        // Vẽ đường đến Player
         if (playerTransform != null)
         {
             Gizmos.color = Color.green;

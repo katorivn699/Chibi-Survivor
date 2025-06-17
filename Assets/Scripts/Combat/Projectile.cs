@@ -65,7 +65,7 @@ public class Projectile : MonoBehaviour
             if (damageable != null)
             {
                 Vector2 knockbackDirection = rb.linearVelocity.normalized;
-                float knockbackForce = 3f;
+                float knockbackForce = 1f;
 
                 damageable.TakeDamage(damage, knockbackDirection, knockbackForce);
                 DamagePopup.Create(other.transform.position, damage);

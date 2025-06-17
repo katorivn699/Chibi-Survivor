@@ -20,9 +20,13 @@ public class ShopUI : MonoBehaviour
     public Button buyButton;
 
     private List<GameObject> currentItemButtonObjects = new List<GameObject>();
-    private ShopManager shopManager;
     private List<ShopItemData> currentDisplayedItems; // Keep track of items displayed
     private int selectedItemIndex = -1;
+
+    [Header("References")]
+    public TextMeshProUGUI refreshCostText; 
+    private ShopManager shopManager;
+
 
     private void Awake()
     {
@@ -64,9 +68,20 @@ public class ShopUI : MonoBehaviour
         }
     }
 
+    public void UpdateRefreshCostUI()
+    {
+        if (refreshCostText != null && shopManager != null)
+        {
+            int cost = shopManager.GetCurrentRefreshCost();
+            refreshCostText.text = $"{cost}G";
+        }
+    }
+
+
     // Called by ShopManager when the shop opens
     public void ShowShop(List<ShopItemData> items)
     {
+        UpdateRefreshCostUI();
         currentDisplayedItems = items; // Store the list of items being shown
         selectedItemIndex = -1; // Reset selection
 
@@ -90,6 +105,7 @@ public class ShopUI : MonoBehaviour
     // Called by ShopManager after an item is purchased and replaced
     public void UpdateShop(List<ShopItemData> items)
     {
+        UpdateRefreshCostUI();
         currentDisplayedItems = items;
         selectedItemIndex = -1; // Reset selection
 

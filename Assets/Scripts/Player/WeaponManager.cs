@@ -77,9 +77,9 @@ public class WeaponManager : MonoBehaviour
             // If already have a ranged weapon, potentially replace or ignore
             if (rangedWeapon != null)
             {
-                Debug.Log($"Already have a ranged weapon ({rangedWeapon.baseWeaponData.weaponName}). Cannot add {weaponData.weaponName}.");
-                // Optionally, implement logic to replace or upgrade the existing ranged weapon
-                return false; // For now, don't add if one exists
+                Debug.Log($"Replacing ranged weapon {rangedWeapon.baseWeaponData.weaponName} with {weaponData.weaponName}.");
+                Destroy(rangedWeapon.gameObject); // Destroy the existing ranged weapon
+                rangedWeapon = null;
             }
 
             if (firePoint == null)
@@ -98,6 +98,7 @@ public class WeaponManager : MonoBehaviour
             Weapon weapon = weaponObject.AddComponent<Weapon>();
             weapon.Initialize(weaponData, transform); // Pass player transform for reference
             rangedWeapon = weapon;
+            weapon.GetComponent<SpriteRenderer>().sortingLayerName = "Player";
             weapon.GetComponent<SpriteRenderer>().sortingOrder = 2;
             Debug.Log($"Added ranged weapon: {weaponData.weaponName}");
             return true;
@@ -112,15 +113,15 @@ public class WeaponManager : MonoBehaviour
             }
 
             // Check if this specific melee weapon is already equipped
-            foreach (Weapon w in equippedWeapons)
-            {
-                if (w.baseWeaponData == weaponData)
-                {
-                    Debug.Log($"Weapon {weaponData.weaponName} is already equipped.");
-                    // Optionally, implement upgrade logic here if adding the same weapon means upgrading
-                    return false; // For now, don't add duplicates
-                }
-            }
+            //foreach (Weapon w in equippedWeapons)
+            //{
+            //    if (w.baseWeaponData == weaponData)
+            //    {
+            //        Debug.Log($"Weapon {weaponData.weaponName} is already equipped.");
+            //        // Optionally, implement upgrade logic here if adding the same weapon means upgrading
+            //        return false; // For now, don't add duplicates
+            //    }
+            //}
 
             // Create and initialize the melee weapon
             GameObject weaponObject = new GameObject(weaponData.weaponName + " (Melee)");
@@ -129,6 +130,7 @@ public class WeaponManager : MonoBehaviour
 
             Weapon weapon = weaponObject.AddComponent<Weapon>();
             weapon.Initialize(weaponData, transform); // Pass player transform
+            weapon.GetComponent<SpriteRenderer>().sortingLayerName = "Player";
 
             equippedWeapons.Add(weapon);
 
@@ -146,26 +148,43 @@ public class WeaponManager : MonoBehaviour
 
     public bool UpgradeSpecificWeapon(WeaponData targetWeaponData, float damageMultiplier, float attackSpeedMultiplier)
     {
-        bool upgraded = false;
         if (targetWeaponData == null)
         {
             Debug.LogError("UpgradeSpecificWeapon called with null targetWeaponData!");
             return false;
         }
 
-        // Check orbiting melee weapons
+        bool upgraded = false;
+        int matchingWeaponCount = 0;
+
+        // Count matching melee weapons
         foreach (Weapon weapon in equippedWeapons)
         {
             if (weapon.baseWeaponData == targetWeaponData)
             {
-                weapon.UpgradeStats(damageMultiplier, attackSpeedMultiplier);
-                Debug.Log($"Upgraded melee weapon: {targetWeaponData.weaponName}");
-                upgraded = true;
-                // Don't break here, in case multiple instances could exist (though current logic prevents duplicates)
+                matchingWeaponCount++;
             }
         }
 
-        // Check the primary ranged weapon
+        // Apply upgrade to matching melee weapons
+        if (matchingWeaponCount > 0)
+        {
+            // Distribute the upgrade evenly across all matching weapons
+            float distributedDamageMultiplier = Mathf.Pow(damageMultiplier, 1f / matchingWeaponCount);
+            float distributedAttackSpeedMultiplier = Mathf.Pow(attackSpeedMultiplier, 1f / matchingWeaponCount);
+
+            foreach (Weapon weapon in equippedWeapons)
+            {
+                if (weapon.baseWeaponData == targetWeaponData)
+                {
+                    weapon.UpgradeStats(distributedDamageMultiplier, distributedAttackSpeedMultiplier);
+                    Debug.Log($"Upgraded melee weapon: {targetWeaponData.weaponName} (distributed upgrade)");
+                    upgraded = true;
+                }
+            }
+        }
+
+        // Check and upgrade the primary ranged weapon
         if (rangedWeapon != null && rangedWeapon.baseWeaponData == targetWeaponData)
         {
             rangedWeapon.UpgradeStats(damageMultiplier, attackSpeedMultiplier);

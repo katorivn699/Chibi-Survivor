@@ -12,11 +12,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e9ba48b6869a8694b9746b9ab52ca39c, type: 3}
   m_Name: Farmer1
   m_EditorClassIdentifier: 
-  playerName: Huy 1
+  playerName: Kai Emberfield
   playerSprite: {fileID: 978012912, guid: 99a24620d31e5ce4e823c32d11e17c2c, type: 3}
   animatorController: {fileID: 9100000, guid: 934c4a6e8a23c624fb64fbe243519d25, type: 2}
-  maxHealth: 100
-  moveSpeed: 5
-  damageMultiplier: 1.1
-  attackSpeedMultiplier: 1.3
-  description: "Si\xEAu m\u1EA1nh hehehe:>"
+  maxHealth: 1200
+  moveSpeed: 1.05
+  damageMultiplier: 1.15
+  attackSpeedMultiplier: 1
+  description: No information

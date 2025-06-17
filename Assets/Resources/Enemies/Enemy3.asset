@@ -19,7 +19,7 @@ MonoBehaviour:
   maxHealth: 150
   damage: 5
   moveSpeed: 2.4
-  attackRange: 1.2
+  attackRange: 1
   attackSpeed: 2
   moneyDropMin: 10
   moneyDropMax: 30
