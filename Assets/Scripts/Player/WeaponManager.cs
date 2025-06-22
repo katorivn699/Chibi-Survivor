@@ -10,8 +10,10 @@ public class WeaponManager : MonoBehaviour
     [Header("Ranged Weapon")]
     public Transform firePoint;
     public Weapon rangedWeapon;
+    public float recoilForce = 5f;
 
     private Camera mainCamera;
+    private Rigidbody2D playerRigidbody;
 
     private float fireRate = 0.5f;
     private float lastShotTime = 0f;
@@ -19,19 +21,23 @@ public class WeaponManager : MonoBehaviour
     private void Start()
     {
         mainCamera = Camera.main;
+        playerRigidbody = GetComponent<Rigidbody2D>();
+        if (playerRigidbody == null)
+        {
+            Debug.LogError("Player Rigidbody2D not found! Recoil will not work.");
+        }
     }
 
     private void Update()
     {
-        // Xoay vũ khí tầm xa theo hướng chuột
         if (rangedWeapon != null && !GameManager.Instance.isShopOpen && !GameManager.Instance.isGameOver && !GameManager.Instance.isGamePaused)
         {
             RotateTowardsMouse();
 
-            // Bắn khi nhấn chuột
             if (Input.GetMouseButtonDown(0) && Time.time - lastShotTime >= fireRate)
             {
                 rangedWeapon.Attack();
+                ApplyRecoil();
                 lastShotTime = Time.time;
             }
         }
@@ -56,12 +62,26 @@ public class WeaponManager : MonoBehaviour
         localScale.y = isMouseOnLeft ? -Mathf.Abs(localScale.y) : Mathf.Abs(localScale.y);
         firePoint.localScale = localScale;
 
-        // Nếu bạn muốn cả vị trí súng đổi bên theo hướng chuột (ví dụ: chuyển sang bên trái nhân vật),
-        // bạn có thể điều chỉnh vị trí của firePoint như bên dưới:
 
-        Vector3 offset = new Vector3(isMouseOnLeft ? -0.2f : 0.2f, -0.2f, 0); // Khoảng cách từ trung tâm nhân vật đến firePoint
+        Vector3 offset = new Vector3(isMouseOnLeft ? -0.2f : 0.2f, -0.2f, 0); 
         firePoint.localPosition = offset;
     }
+
+    private void ApplyRecoil()
+    {
+        if (playerRigidbody != null && rangedWeapon != null && firePoint != null)
+        {
+            Vector2 shootDirection = firePoint.right; // Direction the firePoint is facing
+            Vector2 recoilDirection = -shootDirection.normalized; // Opposite direction
+            playerRigidbody.AddForce(recoilDirection * recoilForce, ForceMode2D.Impulse);
+            Debug.Log($"Applying recoil: Direction={recoilDirection}, Force={recoilForce}, Total={recoilDirection * recoilForce}");
+        }
+        else
+        {
+            Debug.LogWarning("Cannot apply recoil: Missing playerRigidbody, rangedWeapon, or firePoint.");
+        }
+    }
+
 
     public bool AddWeapon(WeaponData weaponData)
     {

@@ -69,12 +69,10 @@ public class MainMenu : MonoBehaviour
                 buttonText.text = character.playerName;
             }
             
-            // Thêm sự kiện click
             int index = i; // Lưu index để sử dụng trong lambda
             button.onClick.AddListener(() => PreviewCharacter(index));
         }
         
-        // Hiển thị nhân vật đầu tiên
         if (availableCharacters.Count > 0)
         {
             PreviewCharacter(0);
@@ -142,14 +140,11 @@ public class MainMenu : MonoBehaviour
     
     public void SelectCharacter()
     {
-        Debug.Log("Selected character: " + availableCharacters[selectedCharacterIndex].playerName);
-        // Lưu nhân vật đã chọn
         PlayerPrefs.SetInt("SelectedCharacter", selectedCharacterIndex);
         PlayerPrefs.Save();
 
         // Chuyển đến scene gameplay
-        //SceneManager.LoadScene("Gameplay");
-        CircleSceneTransition.Instance.TransitionToScene("Gameplay");
+        GameManager.Instance.SelectMap(0);
     }
     
     public void QuitGame()

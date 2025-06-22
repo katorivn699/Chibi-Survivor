@@ -1,0 +1,43 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7e9a0f52d6c3d444da9d50e1e30a6673, type: 3}
+  m_Name: GreenSteppe
+  m_EditorClassIdentifier: 
+  mapName: Green Steppe
+  sceneName: GS_1
+  backgroundMusic: BGM1
+  spawnRadius: 10
+  maxEnemiesAtOnce: 50
+  wallCheckRadius: 10
+  baseEnemyCount: 10
+  enemyCountMultiplier: 1.5
+  maxWaves: 2
+  meleeEnemies:
+  - {fileID: 11400000, guid: 35ffb91cb283ab94b93b0991be0f1d89, type: 2}
+  - {fileID: 11400000, guid: 55d463045cf9aef458abb8240aa0e702, type: 2}
+  fastEnemies:
+  - {fileID: 11400000, guid: aaa104087566ef448a1c0280346ff374, type: 2}
+  rangedEnemies:
+  - {fileID: 11400000, guid: ecb3ff9800ee5b84b8f1e87d97da825d, type: 2}
+  bossEnemies:
+  - {fileID: 11400000, guid: 42335ff5a2595774bb0ddb93102221d9, type: 2}
+  - {fileID: 11400000, guid: 652b8680900e5d240991b17bcc19a7c5, type: 2}
+  meleeEnemyPrefab: {fileID: 294675901360084618, guid: ec3f6987e43537a47aab0793437f0261, type: 3}
+  fastEnemyPrefab: {fileID: 294675901360084618, guid: de937cd48ae57df41b01524b312b2615, type: 3}
+  rangedEnemyPrefab: {fileID: 294675901360084618, guid: 1efc33ab003b8ed43926d008628c124a, type: 3}
+  bossPrefab: {fileID: 294675901360084618, guid: bc43ce7054e2645458bb617b957e9db0, type: 3}
+  lightGatePrefab: {fileID: 5908022319194126586, guid: a66e5e77d85b8e94e860678a9b8c95af, type: 3}
+  lightGateSpawnPoints:
+  - {x: 10, y: 10}
+  - {x: -10, y: 10}
+  - {x: 10, y: -10}
+  lightGateSpawnCheckRadius: 2

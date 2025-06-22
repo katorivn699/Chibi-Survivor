@@ -5,7 +5,6 @@ using UnityEngine.Audio;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
 
-
 [System.Serializable]
 public class Sound
 {
@@ -17,7 +16,6 @@ public class Sound
     public float pitch = 1f;
     public bool loop = false;
     public AudioMixerGroup mixerGroup;
-
     [HideInInspector]
     public AudioSource source;
 }
@@ -56,7 +54,6 @@ public class AudioController : MonoBehaviour
 
     void Awake()
     {
-        // Singleton pattern
         if (Instance == null)
         {
             Instance = this;
@@ -78,13 +75,11 @@ public class AudioController : MonoBehaviour
 
     void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
-        // Tự động tìm và thiết lập sliders khi scene được load
         SetupSliders();
     }
 
     void SetupSliders()
     {
-        // Tìm sliders nếu chưa được assign
         if (masterVolumeSlider == null)
             masterVolumeSlider = GameObject.Find("MVSlider")?.GetComponent<Slider>();
 
@@ -94,57 +89,75 @@ public class AudioController : MonoBehaviour
         if (sfxVolumeSlider == null)
             sfxVolumeSlider = GameObject.Find("SFXSlider")?.GetComponent<Slider>();
 
-        // Kết nối events và set giá trị
         if (masterVolumeSlider != null)
         {
             masterVolumeSlider.onValueChanged.RemoveAllListeners();
             masterVolumeSlider.onValueChanged.AddListener(SetMasterVolume);
-            masterVolumeSlider.value = masterVolume; // <- gán giá trị
+            masterVolumeSlider.value = masterVolume;
         }
 
         if (bgmVolumeSlider != null)
         {
             bgmVolumeSlider.onValueChanged.RemoveAllListeners();
             bgmVolumeSlider.onValueChanged.AddListener(SetBGMVolume);
-            bgmVolumeSlider.value = bgmVolume; // <- gán giá trị
+            bgmVolumeSlider.value = bgmVolume;
         }
 
         if (sfxVolumeSlider != null)
         {
             sfxVolumeSlider.onValueChanged.RemoveAllListeners();
             sfxVolumeSlider.onValueChanged.AddListener(SetSFXVolume);
-            sfxVolumeSlider.value = sfxVolume; // <- gán giá trị
+            sfxVolumeSlider.value = sfxVolume;
         }
     }
 
-
     void InitializeAudio()
     {
+        Debug.Log("Initializing AudioController");
+
         // Khởi tạo BGM
         foreach (Sound sound in bgmSounds)
         {
+            Debug.Log($"Adding BGM: {sound.name}");
             sound.source = gameObject.AddComponent<AudioSource>();
             sound.source.clip = sound.clip;
             sound.source.volume = sound.volume;
             sound.source.pitch = sound.pitch;
             sound.source.loop = sound.loop;
             sound.source.outputAudioMixerGroup = sound.mixerGroup ?? bgmMixerGroup;
-
             bgmDictionary.Add(sound.name, sound);
         }
 
         // Khởi tạo SFX
         foreach (Sound sound in sfxSounds)
         {
-            sound.source = gameObject.AddComponent<AudioSource>();
-            sound.source.clip = sound.clip;
-            sound.source.volume = sound.volume;
-            sound.source.pitch = sound.pitch;
-            sound.source.loop = sound.loop;
-            sound.source.outputAudioMixerGroup = sound.mixerGroup ?? sfxMixerGroup;
-
-            sfxDictionary.Add(sound.name, sound);
+            Debug.Log($"Adding SFX: {sound.name}, Loop: {sound.loop}, Clip: {sound.clip?.name}");
+            if (!sound.loop)
+            {
+                sound.source = gameObject.AddComponent<AudioSource>();
+                sound.source.clip = sound.clip;
+                sound.source.volume = sound.volume;
+                sound.source.pitch = sound.pitch;
+                sound.source.loop = sound.loop;
+                sound.source.outputAudioMixerGroup = sound.mixerGroup ?? sfxMixerGroup;
+            }
+            sfxDictionary.Add(sound.name, sound); // Thêm tất cả SFX vào sfxDictionary
         }
+
+        Debug.Log($"Initialized {bgmDictionary.Count} BGM sounds, {sfxDictionary.Count} SFX sounds");
+    }
+
+    // Lấy thông tin Sound cho SFX
+    public Sound GetSFXSound(string name)
+    {
+        Debug.Log($"Getting SFX sound: {name}");
+        if (sfxDictionary.ContainsKey(name))
+        {
+            Debug.Log($"Found SFX sound: {name}, clip: {sfxDictionary[name].clip?.name}");
+            return sfxDictionary[name];
+        }
+        Debug.LogWarning($"SFX sound: {name} not found!");
+        return null;
     }
 
     // BGM Methods
@@ -153,7 +166,6 @@ public class AudioController : MonoBehaviour
         if (bgmDictionary.ContainsKey(name))
         {
             Sound sound = bgmDictionary[name];
-
             if (currentBGM != null && currentBGM.isPlaying)
             {
                 if (fadeIn)
@@ -177,7 +189,6 @@ public class AudioController : MonoBehaviour
                     sound.source.Play();
                 }
             }
-
             currentBGM = sound.source;
         }
         else
@@ -223,7 +234,15 @@ public class AudioController : MonoBehaviour
         if (sfxDictionary.ContainsKey(name))
         {
             Sound sound = sfxDictionary[name];
-            sound.source.PlayOneShot(sound.clip, sound.volume * volumeScale);
+            if (sound.source != null)
+            {
+                sound.source.PlayOneShot(sound.clip, sound.volume * volumeScale);
+            }
+            else
+            {
+                Debug.LogWarning($"No AudioSource assigned for SFX: {name}, playing at point");
+                AudioSource.PlayClipAtPoint(sound.clip, Vector3.zero, sound.volume * volumeScale);
+            }
         }
         else
         {
@@ -240,7 +259,7 @@ public class AudioController : MonoBehaviour
         }
         else
         {
-            Debug.LogWarning("SFX sound: " + name + " not found!");
+            Debug.LogWarning($"SFX sound: {name} not found!");
         }
     }
 
@@ -248,13 +267,13 @@ public class AudioController : MonoBehaviour
     public void SetMasterVolume(float volume)
     {
         masterVolume = volume;
-        if (volume <= 0.0001f) // Gần như bằng 0
+        if (volume <= 0f)
         {
-            audioMixer.SetFloat("MasterVolume", -80f); // Mute hoàn toàn
+            audioMixer.SetFloat("MasterVolume", -80f);
         }
         else
         {
-            audioMixer.SetFloat("MasterVolume", Mathf.Log10(volume) * 20);
+            audioMixer.SetFloat("MasterVolume", Mathf.Log10(volume) * 20f);
         }
         SaveVolumeSettings();
     }
@@ -262,30 +281,27 @@ public class AudioController : MonoBehaviour
     public void SetBGMVolume(float volume)
     {
         bgmVolume = volume;
-
-        if (volume <= 0.0001f) // Gần như bằng 0
+        if (volume <= 0f)
         {
-            audioMixer.SetFloat("BGMVolume", -80f); // Mute hoàn toàn
+            audioMixer.SetFloat("BGMVolume", -80f);
         }
         else
         {
-            audioMixer.SetFloat("BGMVolume", Mathf.Log10(volume) * 20);
+            audioMixer.SetFloat("BGMVolume", Mathf.Log10(volume) * 20f);
         }
-
         SaveVolumeSettings();
     }
-
 
     public void SetSFXVolume(float volume)
     {
         sfxVolume = volume;
-        if (volume <= 0.0001f) // Gần như bằng 0
+        if (volume <= 0f)
         {
-            audioMixer.SetFloat("SFXVolume", -80f); // Mute hoàn toàn
+            audioMixer.SetFloat("SFXVolume", -80f);
         }
         else
         {
-            audioMixer.SetFloat("SFXVolume", Mathf.Log10(volume) * 20);
+            audioMixer.SetFloat("SFXVolume", Mathf.Log10(volume) * 20f);
         }
         SaveVolumeSettings();
     }
@@ -295,26 +311,22 @@ public class AudioController : MonoBehaviour
     {
         audioSource.volume = 0f;
         audioSource.Play();
-
         while (audioSource.volume < bgmVolume)
         {
-            audioSource.volume += bgmVolume * Time.deltaTime / fadeTime;
+            audioSource.volume += Time.deltaTime / fadeTime;
             yield return null;
         }
-
         audioSource.volume = bgmVolume;
     }
 
     IEnumerator FadeOutBGM(AudioSource audioSource, float fadeTime)
     {
         float startVolume = audioSource.volume;
-
-        while (audioSource.volume > 0)
+        while (audioSource.volume > 0f)
         {
             audioSource.volume -= startVolume * Time.deltaTime / fadeTime;
             yield return null;
         }
-
         audioSource.Stop();
         audioSource.volume = startVolume;
     }
@@ -324,26 +336,20 @@ public class AudioController : MonoBehaviour
         float startVolume = fadeOut.volume;
         fadeIn.volume = 0f;
         fadeIn.Play();
-
         float elapsedTime = 0f;
-
         while (elapsedTime < fadeTime)
         {
             elapsedTime += Time.deltaTime;
             float normalizedTime = elapsedTime / fadeTime;
-
-            fadeOut.volume = Mathf.Lerp(startVolume, 0f, normalizedTime);
-            fadeIn.volume = Mathf.Lerp(0f, bgmVolume, normalizedTime);
-
+            fadeOut.volume -= startVolume * Time.deltaTime / fadeTime;
+            fadeIn.volume += Time.deltaTime / fadeTime;
             yield return null;
         }
-
         fadeOut.Stop();
         fadeOut.volume = startVolume;
-        fadeIn.volume = bgmVolume;
     }
 
-    // Settings Management
+    // Save Volume Settings
     void SaveVolumeSettings()
     {
         PlayerPrefs.SetFloat("MasterVolume", masterVolume);
@@ -358,16 +364,13 @@ public class AudioController : MonoBehaviour
         {
             SetMasterVolume(PlayerPrefs.GetFloat("MasterVolume"));
         }
-
         if (PlayerPrefs.HasKey("BGMVolume"))
         {
             SetBGMVolume(PlayerPrefs.GetFloat("BGMVolume"));
         }
-
         if (PlayerPrefs.HasKey("SFXVolume"))
         {
             SetSFXVolume(PlayerPrefs.GetFloat("SFXVolume"));
         }
     }
 }
-

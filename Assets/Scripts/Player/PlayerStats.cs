@@ -79,15 +79,13 @@ public class PlayerStats : MonoBehaviour, IDamageable
         isDead = true;
         animator.SetTrigger("Die");
 
-        firePoint.SetActive(false); // Tắt fire point khi chết
+        firePoint.SetActive(false); 
 
-        // Bắt đầu coroutine để chờ animation trước khi GameOver
         StartCoroutine(WaitForDieAnimation());
     }
 
     private IEnumerator WaitForDieAnimation()
     {
-        // Đợi đúng thời lượng animation "Die" (ví dụ: 1.2s)
         yield return new WaitForSeconds(1.2f);
 
         GameManager.Instance.GameOver();
@@ -98,7 +96,6 @@ public class PlayerStats : MonoBehaviour, IDamageable
     {
         money += amount;
         
-        // Thông báo tiền thay đổi
         EventManager.Instance.MoneyChanged(money);
     }
     
@@ -108,7 +105,6 @@ public class PlayerStats : MonoBehaviour, IDamageable
         {
             money -= amount;
             
-            // Thông báo tiền thay đổi
             EventManager.Instance.MoneyChanged(money);
             
             return true;
@@ -121,17 +117,14 @@ public class PlayerStats : MonoBehaviour, IDamageable
     {
         currentHealth = Mathf.Min(currentHealth + amount, maxHealth);
         
-        // Thông báo HP thay đổi
         EventManager.Instance.PlayerHealthChanged(currentHealth);
     }
     
-    // Lấy sát thương thực tế (đã nhân với hệ số)
     public float GetActualDamage(float baseDamage)
     {
         return baseDamage * damageMultiplier;
     }
     
-    // Lấy tốc độ đánh thực tế (đã nhân với hệ số)
     public float GetActualAttackSpeed(float baseAttackSpeed)
     {
         return baseAttackSpeed * attackSpeedMultiplier;

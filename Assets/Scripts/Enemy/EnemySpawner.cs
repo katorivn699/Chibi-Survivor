@@ -4,47 +4,36 @@ using UnityEngine;
 
 public class EnemySpawner : MonoBehaviour
 {
-    [Header("Spawn Settings")]
-    public float spawnRadius = 10f;
-    public int maxEnemiesAtOnce = 50;
-    public int maxSpawnAttempts = 30; // Số lần thử spawn tối đa
-    public float wallCheckRadius = 1f; // Bán kính kiểm tra va chạm với tường
-
-    [Header("Enemy Prefabs")]
-    public GameObject meleeEnemyPrefab;
-    public GameObject fastEnemyPrefab;
-    public GameObject rangedEnemyPrefab;
-    public GameObject bossPrefab;
-
-    [Header("Enemy Data")]
-    public List<EnemyData> meleeEnemies;
-    public List<EnemyData> fastEnemies;
-    public List<EnemyData> rangedEnemies;
-    public List<EnemyData> bossEnemies;
+    [Header("Spawn Timing")]
+    public float spawnDelayBetweenEnemies = 0.2f;
+    public float spawnDelayBetweenGroups = 0.5f;
+    public int enemiesPerGroup = 3;
 
     [Header("Boss Scaling")]
     public float bossHealthScaling = 1.2f;
     public float bossDamageScaling = 1.15f;
 
     [Header("Enemy Scaling")]
-    public float enemyHealthScaling = 1.05f;  // 5% mỗi wave
-    public float enemyDamageScaling = 1.03f;  // 3% mỗi wave
+    public float enemyHealthScaling = 1.05f;
+    public float enemyDamageScaling = 1.03f;
 
-    [Header("Spawn Boundaries")]
-    public LayerMask wallLayerMask = -1; // Layer mask cho tường
-
-    [Header("Spawn Timing")]
-    public float spawnDelayBetweenEnemies = 0.2f; // Delay giữa mỗi enemy
-    public float spawnDelayBetweenGroups = 0.5f; // Delay giữa các nhóm enemy
-    public int enemiesPerGroup = 3; // Số enemy spawn cùng lúc trong 1 nhóm
-
+    private MapData currentMap;
     private Transform playerTransform;
     private List<GameObject> activeEnemies = new List<GameObject>();
-
 
     private void Awake()
     {
         playerTransform = GameObject.FindGameObjectWithTag("Player").transform;
+    }
+
+    public void InitializeForMap(MapData map)
+    {
+        currentMap = map;
+    }
+
+    public int GetActiveEnemyCount()
+    {
+        return activeEnemies.Count;
     }
 
     public void SpawnWave(int waveNumber, int enemyCount)
@@ -54,22 +43,15 @@ public class EnemySpawner : MonoBehaviour
 
     private IEnumerator SpawnWaveCoroutine(int waveNumber, int enemyCount)
     {
-        // Tính toán số lượng từng loại kẻ địch
         int meleeCount = Mathf.RoundToInt(enemyCount * 0.3f);
         int fastCount = Mathf.RoundToInt(enemyCount * 0.3f);
         int rangedCount = enemyCount - meleeCount - fastCount;
 
-        // Tạo danh sách các enemy cần spawn
         List<EnemyType> enemiesToSpawn = new List<EnemyType>();
+        for (int i = 0; i < meleeCount; i++) enemiesToSpawn.Add(EnemyType.Melee);
+        for (int i = 0; i < fastCount; i++) enemiesToSpawn.Add(EnemyType.Fast);
+        for (int i = 0; i < rangedCount; i++) enemiesToSpawn.Add(EnemyType.Ranged);
 
-        for (int i = 0; i < meleeCount; i++)
-            enemiesToSpawn.Add(EnemyType.Melee);
-        for (int i = 0; i < fastCount; i++)
-            enemiesToSpawn.Add(EnemyType.Fast);
-        for (int i = 0; i < rangedCount; i++)
-            enemiesToSpawn.Add(EnemyType.Ranged);
-
-        // Xáo trộn danh sách để spawn ngẫu nhiên
         for (int i = 0; i < enemiesToSpawn.Count; i++)
         {
             EnemyType temp = enemiesToSpawn[i];
@@ -78,7 +60,6 @@ public class EnemySpawner : MonoBehaviour
             enemiesToSpawn[randomIndex] = temp;
         }
 
-        // Spawn từ từ với delay
         foreach (EnemyType enemyType in enemiesToSpawn)
         {
             SpawnEnemy(enemyType);
@@ -86,11 +67,10 @@ public class EnemySpawner : MonoBehaviour
         }
     }
 
-
     public void SpawnBoss()
     {
-        if (bossEnemies == null || bossEnemies.Count == 0) return;
-        EnemyData bossData = bossEnemies[Random.Range(0, bossEnemies.Count)];
+        if (currentMap.bossEnemies == null || currentMap.bossEnemies.Count == 0) return;
+        EnemyData bossData = currentMap.bossEnemies[Random.Range(0, currentMap.bossEnemies.Count)];
 
         Vector2 spawnPosition = GetValidSpawnPosition(true);
         if (spawnPosition == Vector2.zero) return;
@@ -104,7 +84,7 @@ public class EnemySpawner : MonoBehaviour
             bossController.Initialize(bossData);
 
             int currentWave = GameManager.Instance.currentWave;
-            int bossWaveCount = currentWave / 10;
+            int bossWaveCount = currentWave / 2;
 
             if (bossWaveCount > 1)
             {
@@ -122,7 +102,6 @@ public class EnemySpawner : MonoBehaviour
             }
 
             AudioController.Instance.PlayBGM("BossBGM");
-
             activeEnemies.Add(bossObject);
 
             HUD hud = Object.FindFirstObjectByType<HUD>();
@@ -134,28 +113,29 @@ public class EnemySpawner : MonoBehaviour
         }
     }
 
-
-
     private void SpawnEnemy(EnemyType type)
     {
-        if (activeEnemies.Count >= maxEnemiesAtOnce)
-            return;
+        if (activeEnemies.Count >= currentMap.maxEnemiesAtOnce) return;
 
         EnemyData enemyData = null;
+        GameObject prefab = null;
 
         switch (type)
         {
             case EnemyType.Melee:
-                if (meleeEnemies == null || meleeEnemies.Count == 0) return;
-                enemyData = meleeEnemies[Random.Range(0, meleeEnemies.Count)];
+                if (currentMap.meleeEnemies == null || currentMap.meleeEnemies.Count == 0) return;
+                enemyData = currentMap.meleeEnemies[Random.Range(0, currentMap.meleeEnemies.Count)];
+                prefab = currentMap.meleeEnemyPrefab;
                 break;
             case EnemyType.Fast:
-                if (fastEnemies == null || fastEnemies.Count == 0) return;
-                enemyData = fastEnemies[Random.Range(0, fastEnemies.Count)];
+                if (currentMap.fastEnemies == null || currentMap.fastEnemies.Count == 0) return;
+                enemyData = currentMap.fastEnemies[Random.Range(0, currentMap.fastEnemies.Count)];
+                prefab = currentMap.fastEnemyPrefab;
                 break;
             case EnemyType.Ranged:
-                if (rangedEnemies == null || rangedEnemies.Count == 0) return;
-                enemyData = rangedEnemies[Random.Range(0, rangedEnemies.Count)];
+                if (currentMap.rangedEnemies == null || currentMap.rangedEnemies.Count == 0) return;
+                enemyData = currentMap.rangedEnemies[Random.Range(0, currentMap.rangedEnemies.Count)];
+                prefab = currentMap.rangedEnemyPrefab;
                 break;
             default:
                 return;
@@ -171,12 +151,7 @@ public class EnemySpawner : MonoBehaviour
         if (controller != null)
         {
             int currentWave = GameManager.Instance.currentWave;
-
-            // Nhân bản EnemyData và scale máu + damage
             EnemyData scaledData = GetScaledEnemyData(enemyData, currentWave, enemyHealthScaling, enemyDamageScaling);
-            scaledData.maxHealth *= Mathf.Pow(enemyHealthScaling, currentWave - 1);
-            scaledData.damage *= Mathf.Pow(enemyDamageScaling, currentWave - 1);
-
             controller.Initialize(scaledData);
             controller.currentHealth = scaledData.maxHealth;
 
@@ -188,27 +163,22 @@ public class EnemySpawner : MonoBehaviour
         }
     }
 
-
     private Vector2 GetValidSpawnPosition(bool isBoss = false)
     {
-        float checkRadius = isBoss ? wallCheckRadius * 2f : wallCheckRadius;
+        float checkRadius = isBoss ? currentMap.wallCheckRadius * 2f : currentMap.wallCheckRadius;
 
-        for (int attempt = 0; attempt < maxSpawnAttempts; attempt++)
+        for (int attempt = 0; attempt < 30; attempt++)
         {
             Vector2 candidatePosition = GetRandomSpawnPosition();
-
-            // Kiểm tra va chạm với tường
             if (!IsPositionBlocked(candidatePosition, checkRadius))
             {
                 return candidatePosition;
             }
         }
 
-        // Nếu không tìm được vị trí hợp lệ, thử spawn gần player hơn
-        for (int attempt = 0; attempt < maxSpawnAttempts; attempt++)
+        for (int attempt = 0; attempt < 30; attempt++)
         {
             Vector2 candidatePosition = GetRandomSpawnPositionNearPlayer();
-
             if (!IsPositionBlocked(candidatePosition, checkRadius))
             {
                 return candidatePosition;
@@ -216,33 +186,29 @@ public class EnemySpawner : MonoBehaviour
         }
 
         Debug.LogWarning("Could not find valid spawn position after all attempts!");
-        return Vector2.zero; // Trả về Vector2.zero nếu không tìm được vị trí hợp lệ
+        return Vector2.zero;
     }
 
     private Vector2 GetRandomSpawnPosition()
     {
-        for (int i = 0; i < maxSpawnAttempts; i++)
+        for (int i = 0; i < 30; i++)
         {
             float angle = Random.Range(0f, 360f) * Mathf.Deg2Rad;
             Vector2 direction = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle));
-            Vector2 candidatePos = (Vector2)playerTransform.position + direction * spawnRadius;
+            Vector2 candidatePos = (Vector2)playerTransform.position + direction * currentMap.spawnRadius;
 
-            // Raycast từ player ra vị trí spawn: nếu không trúng Wall -> hợp lệ
-            RaycastHit2D hit = Physics2D.Raycast(playerTransform.position, direction, spawnRadius, wallLayerMask);
+            RaycastHit2D hit = Physics2D.Raycast(playerTransform.position, direction, currentMap.spawnRadius, LayerMask.GetMask("Wall"));
             if (hit.collider == null)
             {
                 return candidatePos;
             }
         }
-
         return Vector2.zero;
     }
 
-
     private Vector2 GetRandomSpawnPositionNearPlayer()
     {
-        // Spawn gần player hơn nếu không tìm được vị trí ở khoảng cách xa
-        float reducedRadius = spawnRadius * 0.7f;
+        float reducedRadius = currentMap.spawnRadius * 0.7f;
         float angle = Random.Range(0f, 360f) * Mathf.Deg2Rad;
         Vector2 direction = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle));
         return (Vector2)playerTransform.position + direction * reducedRadius;
@@ -250,24 +216,17 @@ public class EnemySpawner : MonoBehaviour
 
     private bool IsPositionBlocked(Vector2 position, float checkRadius)
     {
-        // Kiểm tra va chạm với các object có tag "Wall"
-        Collider2D[] wallColliders = Physics2D.OverlapCircleAll(position, checkRadius, wallLayerMask);
-
+        Collider2D[] wallColliders = Physics2D.OverlapCircleAll(position, checkRadius, LayerMask.GetMask("Wall"));
         foreach (Collider2D collider in wallColliders)
         {
             if (collider.CompareTag("Wall"))
             {
-                return true; // Vị trí bị chặn bởi tường
+                return true;
             }
         }
-
-        return false; // Vị trí hợp lệ
+        return false;
     }
 
-    // Replace the following line in the OnDrawGizmosSelected method:
-    // Gizmos.DrawWireCircle(playerTransform.position, spawnRadius);
-
-    // With the following code to manually draw a wire circle using Gizmos.DrawLine:
     private void DrawWireCircle(Vector3 center, float radius, int segments = 36)
     {
         float angleStep = 360f / segments;
@@ -282,18 +241,14 @@ public class EnemySpawner : MonoBehaviour
         }
     }
 
-    // Update the OnDrawGizmosSelected method to use the new DrawWireCircle method:
     private void OnDrawGizmosSelected()
     {
         if (playerTransform != null)
         {
-            // Draw spawn radius circle
             Gizmos.color = Color.yellow;
-            DrawWireCircle(playerTransform.position, spawnRadius);
-
-            // Draw wall check radius circle
+            DrawWireCircle(playerTransform.position, currentMap?.spawnRadius ?? 10f);
             Gizmos.color = Color.red;
-            DrawWireCircle(playerTransform.position, wallCheckRadius);
+            DrawWireCircle(playerTransform.position, currentMap?.wallCheckRadius ?? 1f);
         }
     }
 
@@ -304,7 +259,6 @@ public class EnemySpawner : MonoBehaviour
         scaled.damage *= Mathf.Pow(damageScale, wave - 1);
         return scaled;
     }
-
 }
 
 public class DestroyCallback : MonoBehaviour

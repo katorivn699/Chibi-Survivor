@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -11,31 +12,46 @@ public class GameManager : MonoBehaviour
     public bool isGameOver = false;
     public bool isShopOpen = false;
 
+    [Header("Map Settings")]
+    public List<MapData> availableMaps;
+    public MapData currentMap;
+    private int currentMapIndex = 0;
+
     [Header("References")]
     public WaveManager waveManager;
     public PlayerStats playerStats;
     public EnemySpawner enemySpawner;
+    private GameObject lightGateInstance;
 
+    [Header("Light Gate Settings")]
+    [Tooltip("Minimum distance from player for Light Gate spawn")]
+    public float minDistanceFromPlayer = 5f;
+    [Tooltip("SFX name for Light Gate sound")]
+    public string lightGateSoundName = "LightGateLoop";
+
+    private bool isNewGame = true;
 
     private void Awake()
     {
-        // Singleton pattern
         if (Instance == null)
         {
             Instance = this;
-            //DontDestroyOnLoad(gameObject);
+            DontDestroyOnLoad(gameObject);
         }
         else
         {
             Destroy(gameObject);
         }
+        LoadGameProgress();
     }
 
     private void Start()
     {
-        FindSceneReferences();
-        // Khởi tạo game
-        StartGame();
+        if (availableMaps.Count == 0)
+        {
+            Debug.LogError("No maps assigned to GameManager!");
+        }
+        Debug.Log("GameManager Start");
     }
 
     void FindSceneReferences()
@@ -50,63 +66,176 @@ public class GameManager : MonoBehaviour
         if (enemySpawner == null) Debug.LogError("GameManager could not find EnemySpawner in the scene!");
     }
 
+    public void LoadMap(MapData map)
+    {
+        currentMap = map;
+        CircleSceneTransition.EnsureInstanceExists();
+        CircleSceneTransition.Instance.TransitionToScene(map.sceneName, () =>
+        {
+            FindSceneReferences();
+            enemySpawner.InitializeForMap(map);
+            StartGame();
+            EventManager.Instance.MapChanged(map.mapName);
+            AudioController.Instance.PlayBGM(map.backgroundMusic);
+        });
+    }
+
+    public void SelectMap(int mapIndex)
+    {
+        if (mapIndex >= 0 && mapIndex < availableMaps.Count)
+        {
+            currentMapIndex = mapIndex;
+            LoadMap(availableMaps[mapIndex]);
+        }
+    }
+
     public void StartGame()
     {
-        currentWave = 0;
-        isGameOver = false;
-        isGamePaused = false;
-        isShopOpen = false;
-        
-        // Thông báo bắt đầu game
-        EventManager.Instance.GameStarted();
+        if (isNewGame)
+        {
+            currentWave = 0; 
+            isGameOver = false;
+            isGamePaused = false;
+            isShopOpen = false;
 
-        AudioController.Instance.PlayBGM("BGM1");
+            if (lightGateInstance != null)
+            {
+                Destroy(lightGateInstance);
+                lightGateInstance = null;
+            }
 
-        // Bắt đầu wave đầu tiên
+            EventManager.Instance.GameStarted();
+        }
         StartNextWave();
+        isNewGame = false; 
     }
 
     public void StartNextWave()
     {
         currentWave++;
-        
-        // Thông báo wave mới
         EventManager.Instance.WaveChanged(currentWave);
-        
-        // Kiểm tra điều kiện xuất hiện boss (sau mỗi 10 wave)
+
         if (currentWave % 2 == 0)
         {
             enemySpawner.SpawnBoss();
             EventManager.Instance.BossSpawned();
         }
-        
-        // Bắt đầu spawn quái
+
+        Debug.Log($"Starting wave {currentWave}");
         waveManager.StartWave(currentWave);
-        
-        // Mở shop sau khi hoàn thành wave
-        // Shop sẽ được mở thông qua WaveManager khi wave hoàn thành
+    }
+
+    public void HandleWaveCompletion(int waveNumber)
+    {
+        if (waveNumber >= currentMap.maxWaves)
+        {
+            if (lightGateInstance == null)
+            {
+                SpawnLightGate();
+            }
+        }
+        else
+        {
+            OpenShop();
+        }
+    }
+
+    private void SpawnLightGate()
+    {
+        if (currentMap == null)
+        {
+            return;
+        }
+
+        if (currentMap.lightGatePrefab == null)
+        {
+            SwitchToNextMap();
+            return;
+        }
+
+        if (lightGateInstance != null)
+        {
+            Destroy(lightGateInstance);
+        }
+
+        Vector2 spawnPosition;
+        if (currentMap.lightGateSpawnPoints != null && currentMap.lightGateSpawnPoints.Count > 0)
+        {
+            spawnPosition = GetValidSpawnPointFromList();
+        }
+        else
+        {
+            spawnPosition = GetValidSpawnPosition();
+        }
+
+        lightGateInstance = Instantiate(currentMap.lightGatePrefab, spawnPosition, Quaternion.identity);
+
+        Sound sound = AudioController.Instance.GetSFXSound(lightGateSoundName);
+        if (sound != null)
+        {
+            AudioSource audioSource = lightGateInstance.AddComponent<AudioSource>();
+            audioSource.clip = sound.clip;
+            audioSource.volume = sound.volume;
+            audioSource.pitch = sound.pitch;
+            audioSource.loop = true;
+            audioSource.outputAudioMixerGroup = sound.mixerGroup ?? AudioController.Instance.sfxMixerGroup;
+            audioSource.spatialBlend = 1f; 
+            audioSource.minDistance = 5f; 
+            audioSource.maxDistance = 20f;
+            audioSource.Play();
+        }
+        else
+        {
+        }
+    }
+
+    private Vector2 GetValidSpawnPointFromList()
+    {
+        int maxAttempts = currentMap.lightGateSpawnPoints.Count;
+        for (int i = 0; i < maxAttempts; i++)
+        {
+            Vector2 spawnPoint = currentMap.lightGateSpawnPoints[Random.Range(0, currentMap.lightGateSpawnPoints.Count)];
+            float distanceToPlayer = Vector2.Distance(spawnPoint, playerStats.transform.position);
+            if (distanceToPlayer >= minDistanceFromPlayer && !Physics2D.OverlapCircle(spawnPoint, currentMap.lightGateSpawnCheckRadius))
+            {
+                return spawnPoint;
+            }
+        }
+        return GetValidSpawnPosition();
+    }
+
+    private Vector2 GetValidSpawnPosition()
+    {
+        int maxAttempts = 10;
+        for (int i = 0; i < maxAttempts; i++)
+        {
+            Vector2 randomPoint = (Vector2)playerStats.transform.position + Random.insideUnitCircle * currentMap.spawnRadius;
+            float distanceToPlayer = Vector2.Distance(randomPoint, playerStats.transform.position);
+            if (distanceToPlayer >= minDistanceFromPlayer && !Physics2D.OverlapCircle(randomPoint, currentMap.lightGateSpawnCheckRadius))
+            {
+                return randomPoint;
+            }
+        }
+        return playerStats.transform.position + new Vector3(minDistanceFromPlayer, 0, 0);
     }
 
     public void OpenShop()
     {
         isShopOpen = true;
-        Time.timeScale = 0; // Tạm dừng game
+        Time.timeScale = 0;
         EventManager.Instance.ShopOpened();
     }
 
     public void CloseShop()
     {
         isShopOpen = false;
-        Time.timeScale = 1; // Tiếp tục game
+        Time.timeScale = 1;
         StartNextWave();
     }
 
     public void PauseGame()
     {
-        if (isShopOpen || isGameOver)
-        {
-            return;
-        }
+        if (isShopOpen || isGameOver) return;
         isGamePaused = true;
         Time.timeScale = 0;
         EventManager.Instance.GamePaused();
@@ -114,10 +243,7 @@ public class GameManager : MonoBehaviour
 
     public void ResumeGame()
     {
-        if (isShopOpen || isGameOver)
-        {
-            return;
-        }
+        if (isShopOpen || isGameOver) return;
         isGamePaused = false;
         Time.timeScale = 1;
         EventManager.Instance.GameResumed();
@@ -128,42 +254,60 @@ public class GameManager : MonoBehaviour
         AudioController.Instance.PlaySFX("Lose");
         isGameOver = true;
         Time.timeScale = 0;
-        
-        // Lưu kết quả cao nhất
         SaveHighestWave();
-        
         EventManager.Instance.GameOver();
     }
 
     private void SaveHighestWave()
     {
-        int highestWave = PlayerPrefs.GetInt("HighestWave", 0);
+        int highestWave = PlayerPrefs.GetInt($"HighestWave_{currentMap.mapName}", 0);
         if (currentWave > highestWave)
         {
-            PlayerPrefs.SetInt("HighestWave", currentWave);
+            PlayerPrefs.SetInt($"HighestWave_{currentMap.mapName}", currentWave);
             PlayerPrefs.Save();
         }
     }
 
     public void RestartGame()
     {
+        isNewGame = true; 
         Time.timeScale = 1;
-        //SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
-        CircleSceneTransition.EnsureInstanceExists();
-
-        CircleSceneTransition.Instance.TransitionToScene("Gameplay");
-
-        FindSceneReferences();
-        StartGame();
+        LoadMap(availableMaps[0]);
+        EventManager.Instance.GameRestarted();
     }
 
     public void LoadMainMenu()
     {
         Time.timeScale = 1;
-
-        //SceneManager.LoadScene("MainMenu");
         CircleSceneTransition.EnsureInstanceExists();
         CircleSceneTransition.Instance.TransitionToScene("MainMenu");
+    }
+
+    public void SwitchToNextMap()
+    {
+        Debug.Log("SwitchToNextMap called");
+        if (lightGateInstance != null)
+        {
+            Destroy(lightGateInstance);
+            lightGateInstance = null;
+        }
+
+        SaveGameProgress();
+        currentMapIndex = (currentMapIndex + 1) % availableMaps.Count;
+        LoadMap(availableMaps[currentMapIndex]);
+    }
+
+    private void SaveGameProgress()
+    {
+        PlayerPrefs.SetInt("CurrentWave", currentWave);
+        PlayerPrefs.SetInt("CurrentMapIndex", currentMapIndex);
+        PlayerPrefs.Save();
+    }
+
+    private void LoadGameProgress()
+    {
+        currentWave = PlayerPrefs.GetInt("CurrentWave", 0);
+        currentMapIndex = PlayerPrefs.GetInt("CurrentMapIndex", 0);
     }
 
     public void QuitGame()

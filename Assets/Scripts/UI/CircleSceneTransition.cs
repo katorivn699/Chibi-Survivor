@@ -2,6 +2,7 @@
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
 using System.Collections;
+using System;
 
 public class CircleSceneTransition : MonoBehaviour
 {
@@ -41,35 +42,46 @@ public class CircleSceneTransition : MonoBehaviour
     {
         if (!isTransitioning)
         {
-            StartCoroutine(TransitionRoutine(sceneName));
+            StartCoroutine(TransitionRoutine(sceneName, null));
         }
     }
 
-    private IEnumerator TransitionRoutine(string sceneName)
+    public void TransitionToScene(string sceneName, Action onTransitionComplete)
+    {
+        if (!isTransitioning)
+        {
+            StartCoroutine(TransitionRoutine(sceneName, onTransitionComplete));
+        }
+    }
+
+    private IEnumerator TransitionRoutine(string sceneName, Action onTransitionComplete)
     {
         isTransitioning = true;
 
-        // Tạm dừng gameplay
+        // Pause gameplay
         Time.timeScale = 0.001f;
 
-        // Hiệu ứng mở rộng vòng tròn
+        // Expand circle animation
         yield return StartCoroutine(Expand());
 
-        // Load scene mới
+        // Load new scene
         AsyncOperation asyncLoad = SceneManager.LoadSceneAsync(sceneName);
         while (!asyncLoad.isDone)
         {
             yield return null;
         }
 
-        // Đợi 1 frame để UI scene mới khởi tạo
+        // Wait one frame for new scene UI to initialize
         yield return null;
 
-        // Hiệu ứng thu nhỏ vòng tròn
+        // Shrink circle animation
         yield return StartCoroutine(Shrink());
 
-        // Khôi phục gameplay
+        // Restore gameplay
         Time.timeScale = 1f;
+
+        // Invoke the completion callback
+        onTransitionComplete?.Invoke();
 
         isTransitioning = false;
     }

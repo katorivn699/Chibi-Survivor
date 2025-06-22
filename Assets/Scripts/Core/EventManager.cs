@@ -5,7 +5,6 @@ public class EventManager : MonoBehaviour
 {
     public static EventManager Instance { get; private set; }
 
-    // Events
     public event Action OnGameStarted;
     public event Action<int> OnWaveChanged;
     public event Action OnGameOver;
@@ -15,6 +14,8 @@ public class EventManager : MonoBehaviour
     public event Action OnShopOpened;
     public event Action OnGamePaused;
     public event Action OnGameResumed;
+    public event Action<string> OnMapChanged;
+    public event Action OnGameRestarted;
 
     private void Awake()
     {
@@ -29,7 +30,6 @@ public class EventManager : MonoBehaviour
         }
     }
 
-    // Methods to trigger events
     public void GameStarted() => OnGameStarted?.Invoke();
     public void WaveChanged(int waveNumber) => OnWaveChanged?.Invoke(waveNumber);
     public void GameOver() => OnGameOver?.Invoke();
@@ -39,4 +39,7 @@ public class EventManager : MonoBehaviour
     public void ShopOpened() => OnShopOpened?.Invoke();
     public void GamePaused() => OnGamePaused?.Invoke();
     public void GameResumed() => OnGameResumed?.Invoke();
+    public void MapChanged(string mapName) => OnMapChanged?.Invoke(mapName);
+    public void GameRestarted() => OnGameRestarted?.Invoke();
+
 }

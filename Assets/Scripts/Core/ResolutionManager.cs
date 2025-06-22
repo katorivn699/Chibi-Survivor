@@ -15,13 +15,16 @@ public class ResolutionManager : MonoBehaviour
     private float currentRefreshRate;
     private int currentResolutionIndex = 0;
 
-    IEnumerator Start()
+    private void Start()
     {
-        yield return null;
+        StartCoroutine(Initialize());
+    }
+
+    private IEnumerator Initialize()
+    {
+        yield return null; // Wait for scene to stabilize
         SetupResolutions();
-
-        DontDestroyOnLoad(gameObject);
-
+        yield return null; // Ensure SetupResolutions is complete
         LoadSettings();
     }
 

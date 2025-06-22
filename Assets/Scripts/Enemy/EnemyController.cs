@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using System.Collections;
 using UnityEngine.AI;
 
@@ -33,6 +33,9 @@ public class EnemyController : MonoBehaviour, IDamageable
         animator = GetComponent<Animator>();
         spriteRenderer = GetComponent<SpriteRenderer>();
         navAgent = GetComponent<NavMeshAgent>();
+
+        rb.bodyType = RigidbodyType2D.Kinematic;
+        rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
 
         navAgent.updateRotation = false;
         navAgent.updateUpAxis = false;
@@ -210,7 +213,7 @@ public class EnemyController : MonoBehaviour, IDamageable
     {
         if (navAgent.enabled && navAgent.isOnNavMesh)
         {
-            navAgent.isStopped = true;  
+            navAgent.isStopped = true;
         }
         navAgent.enabled = false;
 
@@ -219,15 +222,21 @@ public class EnemyController : MonoBehaviour, IDamageable
         if (hit.collider != null) dodgeDir *= -1;
 
         float dodgeSpeed = enemyData.moveSpeed * 2f;
-        rb.linearVelocity = dodgeDir * dodgeSpeed;
-        yield return new WaitForSeconds(0.25f);
-        rb.linearVelocity = Vector2.zero;
+        float dodgeDuration = 0.25f;
+        float timer = 0f;
+
+        while (timer < dodgeDuration)
+        {
+            transform.position += (Vector3)(dodgeDir * dodgeSpeed * Time.deltaTime);
+            timer += Time.deltaTime;
+            yield return null;
+        }
 
         navAgent.enabled = true;
-        EnsureOnNavMesh(); 
+        EnsureOnNavMesh();
         if (navAgent.enabled && navAgent.isOnNavMesh)
         {
-            MoveTowardsPlayer(); 
+            MoveTowardsPlayer();
         }
     }
 
@@ -594,8 +603,7 @@ public class EnemyController : MonoBehaviour, IDamageable
             if (enemyData.type != EnemyType.Boss)
             {
                 AudioController.Instance.PlaySFX("EnemyHit");
-                rb.linearVelocity = Vector2.zero;
-                rb.AddForce(knockbackDirection * knockbackForce, ForceMode2D.Impulse);
+                StartCoroutine(KnockbackCoroutine(knockbackDirection, knockbackForce));
                 StartCoroutine(KnockbackStunCoroutine(0.2f));
                 Dodge();
             }
@@ -609,7 +617,37 @@ public class EnemyController : MonoBehaviour, IDamageable
 
         if (currentHealth <= 0 && enemyData.type == EnemyType.Boss)
         {
-            AudioController.Instance.PlayBGM("BGM1");
+            AudioController.Instance.PlayBGM("BGM1", true, 5);
+        }
+    }
+
+    private IEnumerator KnockbackCoroutine(Vector2 knockbackDirection, float knockbackForce)
+    {
+        if (navAgent.enabled && navAgent.isOnNavMesh)
+        {
+            navAgent.isStopped = true;
+        }
+        navAgent.enabled = false;
+
+        float knockbackDuration = 0.2f;
+        float timer = 0f;
+        Vector2 startPos = transform.position;
+        Vector2 targetPos = startPos + knockbackDirection.normalized * knockbackForce * 0.1f;
+
+        // Di chuyển bằng transform thay vì lực
+        while (timer < knockbackDuration)
+        {
+            float t = timer / knockbackDuration;
+            transform.position = Vector2.Lerp(startPos, targetPos, t);
+            timer += Time.deltaTime;
+            yield return null;
+        }
+
+        navAgent.enabled = true;
+        EnsureOnNavMesh();
+        if (navAgent.enabled && navAgent.isOnNavMesh)
+        {
+            MoveTowardsPlayer();
         }
     }
 
@@ -617,17 +655,10 @@ public class EnemyController : MonoBehaviour, IDamageable
     {
         if (attackCooldown <= 0)
         {
-            Vector2 dodgeDirection = Random.value > 0.5f ? Vector2.left : Vector2.right;
-            rb.linearVelocity = dodgeDirection * enemyData.moveSpeed * 1.5f;
-            StartCoroutine(StopDodgeAfterTime(0.5f));
+            StartCoroutine(DodgeRoutine());
         }
     }
 
-    private IEnumerator StopDodgeAfterTime(float time)
-    {
-        yield return new WaitForSeconds(time);
-        rb.linearVelocity = Vector2.zero;
-    }
 
     private IEnumerator KnockbackStunCoroutine(float stunDuration)
     {
@@ -642,16 +673,20 @@ public class EnemyController : MonoBehaviour, IDamageable
 
     public void Die()
     {
+        if (isDead) return;
+
         isDead = true;
-        rb.linearVelocity = Vector2.zero;
+
+        StopAllCoroutines();
 
         if (navAgent != null && navAgent.enabled && navAgent.isOnNavMesh)
         {
             navAgent.isStopped = true;
             navAgent.ResetPath();
+            navAgent.enabled = false;
         }
-
-        navAgent.enabled = false;
+        rb.linearVelocity = Vector2.zero;
+        rb.bodyType = RigidbodyType2D.Kinematic;
 
         animator.SetTrigger("Die");
         GetComponent<Collider2D>().enabled = false;
